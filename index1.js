@@ -37,23 +37,22 @@ const db = new pg.Client({
   port: process.env.PG_PORT,
 });
 db.connect();
-////
 
 // Root route
 app.get("/", (req, res) => {
     if (req.isAuthenticated()) {
       res.redirect("/move"); // Redirect authenticated users to /move
     } else {
-      res.redirect("/home"); // Redirect non-authenticated users to /home
+      res.redirect("/start"); // Redirect non-authenticated users to /start
     }
   });
   
   // Home route
-  app.get("/home", (req, res) => {
+  app.get("/start", (req, res) => {
     if (req.isAuthenticated()) {
-      res.redirect("/move"); // Redirect authenticated users from /home to /move
+      res.redirect("/move"); // Redirect authenticated users from /start to /move
     } else {
-      res.render("home.ejs"); // Render home.ejs if not authenticated
+      res.render("/start.ejs"); // Render /start.ejs if not authenticated
     }
   });
 
@@ -71,7 +70,7 @@ app.get("/logout", (req, res,next) => {
       return next(err);
     }
     console.log('logout....');
-    res.redirect("/login");
+    res.redirect("/");
   });
 });
 
@@ -80,7 +79,7 @@ app.get("/move", (req, res) => {
     console.log('move...');
     res.redirect('https://snh078.github.io/movers-website/'); 
   } else {
-    res.redirect("/login");
+    res.redirect("/");
   }
 });
 
@@ -103,7 +102,7 @@ app.post(
   "/login",
   passport.authenticate("local", {
     successRedirect: "/move",
-    failureRedirect: "http://localhost:3000/",
+    failureRedirect: "/",
   })
 );
 
