@@ -1,17 +1,26 @@
 import express from "express";
+
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
 import bodyParser from "body-parser";
 import pg from "pg";
+import env from "dotenv";
+
 import bcrypt from "bcrypt"; 
 import passport from "passport";
 import { Strategy } from "passport-local"; 
 import session from "express-session"; 
-import env from "dotenv";
 import GoogleStrategy from "passport-google-oauth2";
 
 const app = express();
 const port = 3000;
 const saltRounds = 10;
 env.config();
+
+// Convert import.meta.url to a file path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 app.use(
   session({
@@ -21,7 +30,7 @@ app.use(
   })
 );
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static("public"));
+app.use('/assets', express.static('public/assets'));//else displays index.html in public file  at root url /  
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -35,9 +44,23 @@ const db = new pg.Client({
 });
 db.connect();
 
-app.get("/home", (req, res) => {
-  res.render("home.ejs");
-});
+// Root route
+app.get("/", (req, res) => {
+    if (req.isAuthenticated()) {
+      res.redirect("/move"); // Redirect authenticated users to /move
+    } else {
+      res.redirect("/home"); // Redirect non-authenticated users to /home
+    }
+  });
+  
+  // Home route
+  app.get("/home", (req, res) => {
+    if (req.isAuthenticated()) {
+      res.redirect("/move"); // Redirect authenticated users from /home to /move
+    } else {
+      res.render("home.ejs"); // Render home.ejs if not authenticated
+    }
+  });
 
 app.get("/login", (req, res) => {
   res.render("login.ejs");
@@ -47,35 +70,45 @@ app.get("/register", (req, res) => {
   res.render("register.ejs");
 });
 
-app.get("/logout", (req, res) => {
+app.get("/logout", (req, res,next) => {
   req.logout(function (err) { 
     if (err) {
       return next(err);
     }
-    res.redirect("/home");
+    console.log('logout....');
+    res.redirect("/login");
   });
 });
 
 app.get("/move", (req, res) => {
   if (req.isAuthenticated()) {
-    res.redirect('https://snh078.github.io/movers-website/');
+    console.log('movee');
+    res.sendFile(__dirname + "/public/index.html"); 
+    // Use res.sendFile() if you are serving a static file directly from the filesystem and the content of the file does not need to be dynamically generated or modified.
+
   } else {
     res.redirect("/login");
   }
 });
 
-app.get("/auth/google",passport.authenticate("google", {
+app.get(
+  "/auth/google",
+  passport.authenticate("google", {
     scope: ["profile", "email"],
   })
 );
 
-app.get("/auth/google/move",passport.authenticate("google", {
+app.get(
+  "/auth/google/move",
+  passport.authenticate("google", {
     successRedirect: "/move",
     failureRedirect: "/login",
   })
 );
-//-----------------------------------------------------------------------------------------------------
-app.post("/login",passport.authenticate("local", {
+
+app.post(
+  "/login",
+  passport.authenticate("local", {
     successRedirect: "/move",
     failureRedirect: "/login",
   })
@@ -91,7 +124,7 @@ app.post("/register", async (req, res) => {
     ]);
 
     if (checkResult.rows.length > 0) {
-      req.redirect("/login");
+      res.redirect("/login");
     } else {
       bcrypt.hash(password, saltRounds, async (err, hash) => {
         if (err) {
@@ -104,7 +137,7 @@ app.post("/register", async (req, res) => {
           const user = result.rows[0];
           req.login(user, (err) => {
             console.log("success");
-            res.redirect("/move");
+            res.redirect("/move"); // Redirect to home page after successful registration
           });
         }
       });
@@ -114,9 +147,11 @@ app.post("/register", async (req, res) => {
   }
 });
 
-passport.use("local",new Strategy(async function verify(username, password, cb) {
+passport.use(
+  "local",
+  new Strategy(async function verify(username, password, cb) {
     try {
-      const result = await db.query("SELECT * FROM users WHERE email = $1 ", [
+      const result = await db.query("SELECT * FROM users WHERE email = $1", [
         username,
       ]);
       if (result.rows.length > 0) {
@@ -143,45 +178,46 @@ passport.use("local",new Strategy(async function verify(username, password, cb) 
   })
 );
 
-passport.use("google",new GoogleStrategy(
+passport.use(
+  "google",
+  new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: "http://localhost:3000/auth/google/move",
       userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
-    } ,
-     async (accessToken, refreshToken, profile, cb) => {
-    try {
+    },
+    async (accessToken, refreshToken, profile, cb) => {
+      try {
         console.log(profile);
-        const result = await db.query("SELECT * FROM users WHERE email = $1", [profile.email,]);
-        if (result.rows.length === 0) 
-          {
+        const result = await db.query("SELECT * FROM users WHERE email = $1", [
+          profile.email,
+        ]);
+        if (result.rows.length === 0) {
           const newUser = await db.query(
             "INSERT INTO users (email, password) VALUES ($1, $2)",
-            [profile.email, "google"]  
+            [profile.email, "google"]
           );
-      
+
           return cb(null, newUser.rows[0]);
-        } 
-        else
-         {
-          
+        } else {
           return cb(null, result.rows[0]);
         }
-      } 
-      catch (err) {
+      } catch (err) {
         return cb(err);
-          }
+      }
     }
   )
 );
-//-------------------------------------------------------------------------------------------------
+
 passport.serializeUser((user, cb) => {
   cb(null, user);
 });
+
 passport.deserializeUser((user, cb) => {
   cb(null, user);
 });
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
