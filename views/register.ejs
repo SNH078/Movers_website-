@@ -9,14 +9,18 @@
 
           <!--register form -->
           <form action="/register" method="POST">
+          
             <div class="form-group">
-              <label for="email">Email</label>
-              <input type="email" class="form-control" name="username">
+              <label for="user_input">Email</label>
+              <input type="email" class="form-control" name="username" id="user_input" >
             </div>
+
             <div class="form-group">
-              <label for="password">Password</label>
-              <input type="password" class="form-control" name="password">
+              <label for="pwd_input">Password</label>
+              <i id="togglePassword" class="ml-1 fa-solid fa-eye "></i>
+              <input type="password" class="form-control" name="password"  id="pwd_input">
             </div>
+            
             <button type="submit" class="btn btn-dark">Register</button>
           </form>
 
@@ -27,10 +31,31 @@
       <div class="card">
           <a class="btn btn-block" href="/auth/google" role="button">
             <i class="fab fa-google pr-1"></i>
-             Sign In with Google
+            Sign in with Google
           </a>       
       </div>
   </div>
 </div>
+<!-- pwd hide /show -->
+<script>
+  // DOMContentLoaded event fires when the HTML document has been completely parsed, and all deferred scripts (<script defer src="…"> and <script type="module">) have downloaded and executed. It doesn't wait for other things like images, subframes, and async scripts to finish loading.
+document.addEventListener('DOMContentLoaded', function () {
+    const passwordField = document.getElementById('pwd_input');
+    const togglePasswordIcon = document.getElementById('togglePassword');
 
+    if (passwordField && togglePasswordIcon) {
+        togglePasswordIcon.addEventListener('click', function () {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+
+            // Toggle icon
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+            // If the class exists, it removes it; if it doesn’t exist, it adds it.
+        });
+    } else {
+        console.error('Password field or toggle icon not found');
+    }
+});
+</script>
 <%- include('partials/footer') %>
